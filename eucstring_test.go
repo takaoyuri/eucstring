@@ -147,6 +147,42 @@ func TestEUCString_ScanUnsupportedType(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestEUCString_ScanText(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		src  pgtype.Text
+		want EUCString
+	}{
+		{
+			name: "null",
+			src:  pgtype.Text{Valid: false},
+			want: EUCString(""),
+		},
+		{
+			name: "EUC-JP text",
+			src: pgtype.Text{
+				String: string([]byte{0xa4, 0xc6, 0xa4, 0xb9, 0xa4, 0xc8}),
+				Valid:  true,
+			},
+			want: EUCString("てすと"),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var got EUCString
+			err := got.ScanText(tt.src)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestEUCString_Value(t *testing.T) {
 	t.Parallel()
 
