@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/text/encoding/japanese"
 	"golang.org/x/text/transform"
 )
@@ -40,20 +41,14 @@ func (e *EUCString) Scan(src any) error {
 }
 
 // ScanText はpgx/v5のTextScannerインターフェースを実装
-func (e *EUCString) ScanText(v interface{ Get() any }) error {
-	val := v.Get()
-	if val == nil {
+func (e *EUCString) ScanText(v pgtype.Text) error {
+	if !v.Valid {
 		*e = ""
 		return nil
 	}
 
-	str, ok := val.(string)
-	if !ok {
-		return fmt.Errorf("EUCString: expected string, got %T", val)
-	}
-
 	// EUC-JPからUTF-8に変換
-	utf8Str, err := eucJPToUTF8([]byte(str))
+	utf8Str, err := eucJPToUTF8([]byte(v.String))
 	if err != nil {
 		return fmt.Errorf("EUCString: failed to convert EUC-JP to UTF-8: %w", err)
 	}

@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
+
+var _ pgtype.TextScanner = (*EUCString)(nil)
 
 func TestEUCString_MarshalJSON(t *testing.T) {
 	t.Parallel()
