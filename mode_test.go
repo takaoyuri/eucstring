@@ -53,6 +53,10 @@ func TestEUCStringUTF8ModeScanAndValue(t *testing.T) {
 	value, err := got.Value()
 	require.NoError(t, err)
 	require.Equal(t, "テスト😀", value)
+
+	require.Error(t, got.Scan([]byte{0xff}))
+	_, err = EUCString(string([]byte{0xff})).Value()
+	require.Error(t, err)
 }
 
 func TestEUCStringUTF8ModeScanText(t *testing.T) {
