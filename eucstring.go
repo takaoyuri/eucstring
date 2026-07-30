@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/text/encoding/japanese"
@@ -30,10 +31,9 @@ func (e *EUCString) Scan(src any) error {
 		return fmt.Errorf("EUCString: unsupported type: %T", src)
 	}
 
-	// EUC-JPからUTF-8に変換
-	utf8Str, err := eucJPToUTF8(data)
+	utf8Str, err := decode(data)
 	if err != nil {
-		return fmt.Errorf("EUCString: failed to convert EUC-JP to UTF-8: %w", err)
+		return fmt.Errorf("EUCString: failed to decode database value: %w", err)
 	}
 
 	*e = EUCString(utf8Str)
@@ -47,10 +47,9 @@ func (e *EUCString) ScanText(v pgtype.Text) error {
 		return nil
 	}
 
-	// EUC-JPからUTF-8に変換
-	utf8Str, err := eucJPToUTF8([]byte(v.String))
+	utf8Str, err := decode([]byte(v.String))
 	if err != nil {
-		return fmt.Errorf("EUCString: failed to convert EUC-JP to UTF-8: %w", err)
+		return fmt.Errorf("EUCString: failed to decode database value: %w", err)
 	}
 
 	*e = EUCString(utf8Str)
@@ -59,12 +58,30 @@ func (e *EUCString) ScanText(v pgtype.Text) error {
 
 // Value はdatabase/sql/driverのValuerインターフェースを実装
 func (e EUCString) Value() (driver.Value, error) {
+	if isUTF8Mode() {
+		if !utf8.ValidString(string(e)) {
+			return nil, fmt.Errorf("EUCString: value is not valid UTF-8")
+		}
+		return string(e), nil
+	}
+
 	// UTF-8からEUC-JPに変換して保存
 	eucData, err := utf8ToEUCJP(string(e))
 	if err != nil {
 		return nil, fmt.Errorf("EUCString: failed to convert UTF-8 to EUC-JP: %w", err)
 	}
 	return eucData, nil
+}
+
+func decode(data []byte) (string, error) {
+	if isUTF8Mode() {
+		if !utf8.Valid(data) {
+			return "", fmt.Errorf("value is not valid UTF-8")
+		}
+		return string(data), nil
+	}
+
+	return eucJPToUTF8(data)
 }
 
 // String はstringerインターフェースを実装
