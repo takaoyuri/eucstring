@@ -2,6 +2,7 @@ package eucstring
 
 import (
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -9,8 +10,12 @@ import (
 )
 
 func TestInitFromEnv(t *testing.T) {
+	resetInitStateForTest()
 	original := mode(currentMode.Load())
-	t.Cleanup(func() { require.NoError(t, setMode(original)) })
+	t.Cleanup(func() {
+		require.NoError(t, setMode(original))
+		resetInitStateForTest()
+	})
 
 	t.Setenv("EUCSTRING_MODE", "utf-8")
 	require.NoError(t, InitFromEnv())
@@ -18,6 +23,11 @@ func TestInitFromEnv(t *testing.T) {
 	value, err := EUCString("テスト😀").Value()
 	require.NoError(t, err)
 	require.Equal(t, "テスト😀", value)
+}
+
+func resetInitStateForTest() {
+	initOnce = sync.Once{}
+	initErr = nil
 }
 
 func TestInitFromEnvInvalidValue(t *testing.T) {
