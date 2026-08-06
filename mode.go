@@ -2,62 +2,53 @@ package eucstring
 
 import (
 	"fmt"
-	"os"
 	"sync"
 	"sync/atomic"
 )
 
-type mode int32
+// Mode はDB文字列のエンコーディングモードです。
+type Mode int32
 
 const (
-	modeEUCJP mode = iota
-	modeUTF8
+	// ModeEUCJP はDB値をEUC-JPとして扱います。
+	ModeEUCJP Mode = iota
+	// ModeUTF8 はDB値をUTF-8として扱い、変換しません。
+	ModeUTF8
 )
 
-const modeEnv = "EUCSTRING_MODE"
-
 var currentMode atomic.Int32
-var initOnce sync.Once
-var initErr error
+var modeMu sync.Mutex
+var modeConfigured bool
 
 func init() {
-	// 既存利用者との互換性のため、明示的な設定がない場合はEUC-JPです。
-	currentMode.Store(int32(modeEUCJP))
+	// 既存利用者との互換性のため、既定値はEUC-JPです。
+	currentMode.Store(int32(ModeEUCJP))
 }
 
-func setMode(value mode) error {
-	if value != modeEUCJP && value != modeUTF8 {
+// SetMode は現在のプロセスのDB文字列モードを設定します。
+// アプリケーション起動時に、DB接続を利用する前に一度だけ呼び出してください。
+func SetMode(value Mode) error {
+	if value != ModeEUCJP && value != ModeUTF8 {
 		return fmt.Errorf("eucstring: unsupported mode: %d", value)
 	}
+
+	modeMu.Lock()
+	defer modeMu.Unlock()
+	if modeConfigured && Mode(currentMode.Load()) != value {
+		return fmt.Errorf("eucstring: mode is already configured as %s", modeName(Mode(currentMode.Load())))
+	}
 	currentMode.Store(int32(value))
+	modeConfigured = true
 	return nil
 }
 
-// InitFromEnv はEUCSTRING_MODEの値を読み込み、DB文字列モードを設定します。
-// 値は "euc-jp" または "utf-8" です。未設定時は既定値のEUC-JPを維持します。
-func InitFromEnv() error {
-	initOnce.Do(func() {
-		initErr = initFromEnv()
-	})
-	return initErr
-}
-
-func initFromEnv() error {
-	value, ok := os.LookupEnv(modeEnv)
-	if !ok {
-		return nil
-	}
-
-	switch value {
-	case "euc-jp":
-		return setMode(modeEUCJP)
-	case "utf-8":
-		return setMode(modeUTF8)
-	default:
-		return fmt.Errorf("eucstring: invalid %s value %q (want euc-jp or utf-8)", modeEnv, value)
-	}
-}
-
 func isUTF8Mode() bool {
-	return mode(currentMode.Load()) == modeUTF8
+	return Mode(currentMode.Load()) == ModeUTF8
+}
+
+func modeName(value Mode) string {
+	if value == ModeUTF8 {
+		return "utf-8"
+	}
+	return "euc-jp"
 }

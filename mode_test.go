@@ -1,60 +1,44 @@
 package eucstring
 
 import (
-	"os"
-	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 )
 
-func TestInitFromEnv(t *testing.T) {
-	resetInitStateForTest()
-	original := mode(currentMode.Load())
-	t.Cleanup(func() {
-		require.NoError(t, setMode(original))
-		resetInitStateForTest()
-	})
+func TestSetMode(t *testing.T) {
+	resetModeStateForTest()
+	t.Cleanup(resetModeStateForTest)
 
-	t.Setenv("EUCSTRING_MODE", "utf-8")
-	require.NoError(t, InitFromEnv())
-
+	require.NoError(t, SetMode(ModeUTF8))
 	value, err := EUCString("テスト😀").Value()
 	require.NoError(t, err)
 	require.Equal(t, "テスト😀", value)
+
+	require.NoError(t, SetMode(ModeUTF8))
 }
 
-func resetInitStateForTest() {
-	initOnce = sync.Once{}
-	initErr = nil
+func TestSetModeInvalidValue(t *testing.T) {
+	resetModeStateForTest()
+	t.Cleanup(resetModeStateForTest)
+	require.Error(t, SetMode(Mode(99)))
 }
 
-func TestInitFromEnvInvalidValue(t *testing.T) {
-	original := mode(currentMode.Load())
-	t.Cleanup(func() { require.NoError(t, setMode(original)) })
+func TestSetModeCannotChangeAfterConfiguration(t *testing.T) {
+	resetModeStateForTest()
+	t.Cleanup(resetModeStateForTest)
 
-	t.Setenv("EUCSTRING_MODE", "invalid")
-	require.Error(t, initFromEnv())
-}
-
-func TestInitFromEnvUnsetKeepsCurrentMode(t *testing.T) {
-	original := mode(currentMode.Load())
-	t.Cleanup(func() { require.NoError(t, setMode(original)) })
-	require.NoError(t, setMode(modeUTF8))
-	t.Setenv("EUCSTRING_MODE", "")
-	require.NoError(t, os.Unsetenv("EUCSTRING_MODE"))
-
-	require.NoError(t, initFromEnv())
-	value, err := EUCString("テスト😀").Value()
-	require.NoError(t, err)
-	require.Equal(t, "テスト😀", value)
+	require.NoError(t, SetMode(ModeUTF8))
+	err := SetMode(ModeEUCJP)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "already configured")
 }
 
 func TestEUCStringUTF8ModeScanAndValue(t *testing.T) {
-	original := mode(currentMode.Load())
-	t.Cleanup(func() { require.NoError(t, setMode(original)) })
-	require.NoError(t, setMode(modeUTF8))
+	resetModeStateForTest()
+	t.Cleanup(resetModeStateForTest)
+	require.NoError(t, SetMode(ModeUTF8))
 
 	var got EUCString
 	require.NoError(t, got.Scan([]byte("テスト😀")))
@@ -70,9 +54,9 @@ func TestEUCStringUTF8ModeScanAndValue(t *testing.T) {
 }
 
 func TestEUCStringUTF8ModeScanText(t *testing.T) {
-	original := mode(currentMode.Load())
-	t.Cleanup(func() { require.NoError(t, setMode(original)) })
-	require.NoError(t, setMode(modeUTF8))
+	resetModeStateForTest()
+	t.Cleanup(resetModeStateForTest)
+	require.NoError(t, SetMode(ModeUTF8))
 
 	var got EUCString
 	require.NoError(t, got.ScanText(pgtype.Text{String: "テスト😀", Valid: true}))
@@ -81,4 +65,11 @@ func TestEUCStringUTF8ModeScanText(t *testing.T) {
 	require.Error(t, got.ScanText(pgtype.Text{String: string([]byte{0xff}), Valid: true}))
 	require.NoError(t, got.ScanText(pgtype.Text{Valid: false}))
 	require.Equal(t, EUCString(""), got)
+}
+
+func resetModeStateForTest() {
+	modeMu.Lock()
+	currentMode.Store(int32(ModeEUCJP))
+	modeConfigured = false
+	modeMu.Unlock()
 }
