@@ -23,6 +23,42 @@ type Book struct {
 - `database/sql.Scanner`
 - `database/sql/driver.Valuer`
 - JSON marshal/unmarshal
+- EUC-JPに変換できない文字の置き換え（`ReplaceUnsupported`）
+
+## Replacing unsupported characters
+
+`EUCString`の`Value`は、EUC-JPに変換できない文字（〜 U+301C、絵文字など）があるとエラーを返します。
+自由入力欄など、置き換えて保存してよい値は、DBへ書き込む前に`ReplaceUnsupported`で置き換えてください。
+
+```go
+replaced, unsupported := eucstring.ReplaceUnsupported(input)
+if len(unsupported) > 0 {
+	log.Printf("EUC-JPに変換できない文字を?に置き換えました: %q", unsupported)
+}
+form.Note = eucstring.EUCString(replaced)
+```
+
+`ReplaceUnsupported`は次の順で置き換えます。
+
+1. EUC-JPに変換できない文字のうち、対応する文字があるものを変換します。
+
+   | 変換前 | 変換後 |
+   | --- | --- |
+   | 〜 U+301C WAVE DASH | ～ U+FF5E FULLWIDTH TILDE |
+   | − U+2212 MINUS SIGN | － U+FF0D FULLWIDTH HYPHEN-MINUS |
+   | — U+2014 EM DASH | ― U+2015 HORIZONTAL BAR |
+   | ‖ U+2016 DOUBLE VERTICAL LINE | ∥ U+2225 PARALLEL TO |
+   | ¢ U+00A2 CENT SIGN | ￠ U+FFE0 FULLWIDTH CENT SIGN |
+   | £ U+00A3 POUND SIGN | ￡ U+FFE1 FULLWIDTH POUND SIGN |
+   | ¬ U+00AC NOT SIGN | ￢ U+FFE2 FULLWIDTH NOT SIGN |
+   | ¥ U+00A5 YEN SIGN | ￥ U+FFE5 FULLWIDTH YEN SIGN |
+   | ‾ U+203E OVERLINE | ￣ U+FFE3 FULLWIDTH MACRON |
+
+2. それでもEUC-JPに変換できない文字と不正なUTF-8のバイトを`?`に置き換えます。
+
+2つ目の戻り値は`?`に置き換えた文字です（出現順、重複なし）。置き換えがなければ`nil`です。
+対応表による変換だけが起きたかどうかは、戻り値の文字列と元の文字列を比較して判定します。
+`ReplaceUnsupported`は`SetMode`の設定に関係なく、EUC-JPを基準に置き換えます。
 
 ## Database encoding migration
 
