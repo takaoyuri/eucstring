@@ -1,6 +1,7 @@
 package eucstring
 
 import (
+	"strings"
 	"testing"
 	"unicode/utf8"
 
@@ -79,6 +80,25 @@ func TestReplaceUnsupported(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestReplaceUnsupported_ManyDistinctRunes(t *testing.T) {
+	t.Parallel()
+
+	// 私用面のU+F0000〜U+FFFFDはEUC-JPに変換できないため、すべて '?' に置き換わる。
+	var input strings.Builder
+	var want []rune
+	for r := rune(0xF0000); r <= 0xFFFFD; r++ {
+		input.WriteRune(r)
+		want = append(want, r)
+	}
+	// 2回目の出現は戻り値に重複して含めない。
+	input.WriteRune(0xF0000)
+	input.WriteRune(0xFFFFD)
+
+	got, unsupported := ReplaceUnsupported(input.String())
+	require.Equal(t, strings.Repeat("?", len(want)+2), got)
+	require.Equal(t, want, unsupported)
 }
 
 func TestReplaceUnsupported_ValueSucceeds(t *testing.T) {

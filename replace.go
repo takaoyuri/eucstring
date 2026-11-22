@@ -1,7 +1,6 @@
 package eucstring
 
 import (
-	"slices"
 	"strings"
 
 	"golang.org/x/text/encoding/japanese"
@@ -47,12 +46,18 @@ func ReplaceUnsupported(s string) (string, []rune) {
 	var b strings.Builder
 	b.Grow(len(s))
 	var unsupported []rune
+	// seen は '?' に置き換えた文字の重複判定に使います。変換できない文字が見つかるまで作りません。
+	var seen map[rune]struct{}
 	for _, r := range s {
 		if substitute, ok := eucJPSubstitutes[r]; ok {
 			r = substitute
 		}
 		if _, err := encoder.String(string(r)); err != nil {
-			if !slices.Contains(unsupported, r) {
+			if _, ok := seen[r]; !ok {
+				if seen == nil {
+					seen = make(map[rune]struct{})
+				}
+				seen[r] = struct{}{}
 				unsupported = append(unsupported, r)
 			}
 			r = unsupportedReplacement
