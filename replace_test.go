@@ -33,8 +33,13 @@ func TestReplaceUnsupported(t *testing.T) {
 		},
 		{
 			name:  "対応表の全文字",
-			input: "〜−—‖¢£¬¥‾",
-			want:  "～－―∥￠￡￢￥￣",
+			input: "\u301C\u2212\u2014\u2016\u00A2\u00A3\u00AC\u00A5\u203E\u00A0",
+			want:  "\uFF5E\uFF0D\u2015\u2225\uFFE0\uFFE1\uFFE2\uFFE5\uFFE3\u0020",
+		},
+		{
+			name:  "NO-BREAK SPACE",
+			input: "受付\u00A0メモ",
+			want:  "受付 メモ",
 		},
 		{
 			name:            "絵文字",
@@ -50,9 +55,9 @@ func TestReplaceUnsupported(t *testing.T) {
 		},
 		{
 			name:            "対応表の変換と?置換の混在",
-			input:           "〜😀− ",
-			want:            "～?－?",
-			wantUnsupported: []rune{'😀', ' '},
+			input:           "\u301C😀\u2212\u00A0",
+			want:            "\uFF5E?\uFF0D ",
+			wantUnsupported: []rune{'😀'},
 		},
 		{
 			name:            "不正なUTF-8",
@@ -100,7 +105,7 @@ func TestEUCJPSubstitutes(t *testing.T) {
 }
 
 func FuzzReplaceUnsupported(f *testing.F) {
-	for _, seed := range []string{"", "テスト", "〜😀", "a\xffb", " —"} {
+	for _, seed := range []string{"", "テスト", "\u301C😀", "a\xffb", "\u00A0\u2014"} {
 		f.Add(seed)
 	}
 	f.Fuzz(func(t *testing.T, s string) {

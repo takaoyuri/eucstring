@@ -10,15 +10,16 @@ import (
 // eucJPSubstitutes はEUC-JPに変換できないが、意味の同じEUC-JP対応文字がある文字の対応表です。
 // WAVE DASH問題などで、UnicodeからJIS X 0208への対応が実装によって異なる文字を対象にします。
 var eucJPSubstitutes = map[rune]rune{
-	'〜': '～', // 〜 WAVE DASH → ～ FULLWIDTH TILDE
-	'−': '－', // − MINUS SIGN → － FULLWIDTH HYPHEN-MINUS
-	'—': '―', // — EM DASH → ― HORIZONTAL BAR
-	'‖': '∥', // ‖ DOUBLE VERTICAL LINE → ∥ PARALLEL TO
-	'¢': '￠', // ¢ CENT SIGN → ￠ FULLWIDTH CENT SIGN
-	'£': '￡', // £ POUND SIGN → ￡ FULLWIDTH POUND SIGN
-	'¬': '￢', // ¬ NOT SIGN → ￢ FULLWIDTH NOT SIGN
-	'¥': '￥', // ¥ YEN SIGN → ￥ FULLWIDTH YEN SIGN
-	'‾': '￣', // ‾ OVERLINE → ￣ FULLWIDTH MACRON
+	0x301C: 0xFF5E, // 〜 WAVE DASH → ～ FULLWIDTH TILDE
+	0x2212: 0xFF0D, // − MINUS SIGN → － FULLWIDTH HYPHEN-MINUS
+	0x2014: 0x2015, // — EM DASH → ― HORIZONTAL BAR
+	0x2016: 0x2225, // ‖ DOUBLE VERTICAL LINE → ∥ PARALLEL TO
+	0x00A2: 0xFFE0, // ¢ CENT SIGN → ￠ FULLWIDTH CENT SIGN
+	0x00A3: 0xFFE1, // £ POUND SIGN → ￡ FULLWIDTH POUND SIGN
+	0x00AC: 0xFFE2, // ¬ NOT SIGN → ￢ FULLWIDTH NOT SIGN
+	0x00A5: 0xFFE5, // ¥ YEN SIGN → ￥ FULLWIDTH YEN SIGN
+	0x203E: 0xFFE3, // ‾ OVERLINE → ￣ FULLWIDTH MACRON
+	0x00A0: 0x0020, // NO-BREAK SPACE → SPACE
 }
 
 // unsupportedReplacement はEUC-JPに変換できない文字の置換文字です。

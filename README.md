@@ -53,6 +53,7 @@ form.Note = eucstring.EUCString(replaced)
    | ¬ U+00AC NOT SIGN | ￢ U+FFE2 FULLWIDTH NOT SIGN |
    | ¥ U+00A5 YEN SIGN | ￥ U+FFE5 FULLWIDTH YEN SIGN |
    | ‾ U+203E OVERLINE | ￣ U+FFE3 FULLWIDTH MACRON |
+   | U+00A0 NO-BREAK SPACE | 半角スペース U+0020 SPACE |
 
 2. それでもEUC-JPに変換できない文字と不正なUTF-8のバイトを`?`に置き換えます。
 
